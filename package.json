@@ -1,0 +1,33 @@
+{
+  "name": "hero-cycles-pricing-engine",
+  "version": "1.0.0",
+  "description": "Pricing engine for configurable bicycles with time-sensitive pricing",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc && npm run copy-views",
+    "copy-views": "xcopy src\\web\\views dist\\web\\views /E /I /Y",
+    "start": "node dist/web/server.js",
+    "cli": "node dist/cli/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "clean": "rmdir /s /q dist"
+  },
+  "keywords": [
+    "pricing",
+    "bicycles",
+    "configurator",
+    "hero-cycles"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}
