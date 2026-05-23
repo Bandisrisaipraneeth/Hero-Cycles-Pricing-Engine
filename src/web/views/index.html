@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hero Cycles - Price Configurator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🚴 Hero Cycles Price Configurator</h1>
+        <p>Configure your bicycle and get instant pricing</p>
+      </header>
+
+      <div class="content">
+        <div class="left-panel">
+          <div class="date-section">
+            <label for="pricingDate">Pricing Date:</label>
+            <input type="date" id="pricingDate" value="2016-12-15" />
+          </div>
+
+          <!-- Compatibility Warnings Container -->
+          <div
+            id="compatibilityWarningsContainer"
+            class="warnings-container"
+            style="display: none"
+          ></div>
+
+          <div class="components-section">
+            <div class="tabs">
+              <button class="tab active" data-component="FRAME">Frame</button>
+              <button class="tab" data-component="HANDLEBAR_BRAKES">
+                Handle Bar & Brakes
+              </button>
+              <button class="tab" data-component="SEATING">Seating</button>
+              <button class="tab" data-component="WHEELS">Wheels</button>
+              <button class="tab" data-component="CHAIN_ASSEMBLY">
+                Chain Assembly
+              </button>
+            </div>
+
+            <div id="partsContainer" class="parts-container"></div>
+          </div>
+
+          <div class="button-group">
+            <button id="calculateBtn" class="btn-primary">
+              Calculate Price
+            </button>
+            <button id="resetBtn" class="btn-secondary">Reset All</button>
+          </div>
+        </div>
+
+        <div class="right-panel">
+          <div class="breakdown-section">
+            <h2>Price Breakdown</h2>
+            <div id="breakdownContainer" class="breakdown-container">
+              <p class="placeholder">Select parts and click Calculate</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
