@@ -15,9 +15,20 @@ let currentComponent = "FRAME";
 let currentDate = "2016-12-15";
 let lastValidation = null;
 
-/**
- * Load all parts from backend API
- */
+// Compatibility rules
+const compatibilityRules = {
+  tubeless_tyre: {
+    incompatible: ["tube"],
+    message:
+      "⚠️ Tubeless Tyre cannot be used with Inner Tube. Remove the tube for tubeless setup.",
+  },
+  tube: {
+    incompatible: ["tubeless_tyre"],
+    message:
+      "⚠️ Inner Tube is not compatible with Tubeless Tyre. Use standard tyre instead.",
+  },
+};
+
 async function loadParts() {
   try {
     const response = await fetch("/api/parts");
@@ -28,9 +39,6 @@ async function loadParts() {
   }
 }
 
-/**
- * Get price for a part on selected date
- */
 async function getPriceForPart(partId, date) {
   try {
     const response = await fetch("/api/calculate", {
@@ -49,9 +57,6 @@ async function getPriceForPart(partId, date) {
   return 0;
 }
 
-/**
- * Validate configuration via API
- */
 async function validateConfiguration(partIds) {
   try {
     const response = await fetch("/api/validate", {
@@ -69,9 +74,6 @@ async function validateConfiguration(partIds) {
   }
 }
 
-/**
- * Format validation messages for display
- */
 function getCompatibilityWarnings() {
   if (!lastValidation) return [];
 
@@ -102,9 +104,6 @@ function getCompatibilityWarnings() {
   return allMessages;
 }
 
-/**
- * Display validation warnings/errors in UI
- */
 function displayCompatibilityWarnings() {
   const warningsContainer = document.getElementById(
     "compatibilityWarningsContainer",
@@ -118,6 +117,7 @@ function displayCompatibilityWarnings() {
     messages.forEach((msg) => {
       const warningDiv = document.createElement("div");
       warningDiv.className = `compatibility-warning severity-${msg.severity}`;
+      // Remove the warning icon from message text since CSS will add it
       const cleanMessage = msg.message
         .replace(/^⚠️\s*/, "")
         .replace(/^❌\s*/, "");
@@ -130,9 +130,6 @@ function displayCompatibilityWarnings() {
   }
 }
 
-/**
- * Render parts for current component tab
- */
 function renderParts(component) {
   const container = document.getElementById("partsContainer");
   container.innerHTML = "";
@@ -145,7 +142,6 @@ function renderParts(component) {
     div.className = "part-option-group";
     div.id = `part-group-${part.id}`;
 
-    // Checkbox
     const checkboxDiv = document.createElement("div");
     checkboxDiv.className = "part-option";
 
@@ -195,7 +191,6 @@ function renderParts(component) {
     checkboxDiv.appendChild(label);
     div.appendChild(checkboxDiv);
 
-    // Quantity controls
     const quantityDiv = document.createElement("div");
     quantityDiv.className = "quantity-controls";
 
@@ -241,13 +236,23 @@ function renderParts(component) {
 
     container.appendChild(div);
 
+    // Fetch and display price asynchronously
     fetchAndDisplayPrice(part.id);
   });
+
+  displayCompatibilityWarnings(); // Show warnings after rendering
 }
 
-/**
- * Update quantity display for a part
- */
+// Fetch price for each part
+async function fetchAndDisplayPrice(partId) {
+  const date = document.getElementById("pricingDate").value;
+  const price = await getPriceForPart(partId, date);
+  const priceElement = document.getElementById(`price-${partId}`);
+  if (priceElement) {
+    priceElement.textContent = `₹${price.toLocaleString("en-IN")}`;
+  }
+}
+
 function updateQuantityDisplay(partId) {
   const display = document.getElementById(`qty-display-${partId}`);
   if (display) {
@@ -255,9 +260,6 @@ function updateQuantityDisplay(partId) {
   }
 }
 
-/**
- * Enable/disable quantity controls based on checkbox state
- */
 function updateQuantityControls(partId) {
   const partGroup = document.getElementById(`part-group-${partId}`);
   if (!partGroup) return;
@@ -270,6 +272,7 @@ function updateQuantityControls(partId) {
   if (decreaseBtn) decreaseBtn.disabled = !isChecked;
   if (increaseBtn) increaseBtn.disabled = !isChecked;
 
+  // Ensure selectedParts is initialized
   if (isChecked && !selectedParts[partId]) {
     selectedParts[partId] = 1;
   }
@@ -277,47 +280,6 @@ function updateQuantityControls(partId) {
   updateQuantityDisplay(partId);
 }
 
-/**
- * Fetch and display price for a part
- */
-async function fetchAndDisplayPrice(partId) {
-  const date = document.getElementById("pricingDate").value;
-  const price = await getPriceForPart(partId, date);
-  const priceElement = document.getElementById(`price-${partId}`);
-  if (priceElement) {
-    priceElement.textContent = `₹${price.toLocaleString("en-IN")}`;
-  }
-}
-
-/**
- * Show quantity limit warning
- */
-function showQuantityWarning(partName, maxQty) {
-  const message = `⚠️ Quantity Limit Exceeded!\n\nMaximum allowed quantity per item: ${maxQty}\n\nYou have reached the limit.`;
-  alert(message);
-}
-
-/**
- * Validate total parts count
- */
-function validateTotalParts() {
-  let totalParts = 0;
-  Object.values(selectedParts).forEach((qty) => {
-    totalParts += qty;
-  });
-
-  if (totalParts > MAX_TOTAL_PARTS) {
-    const message = `⚠️ Total Parts Limit Exceeded!\n\nMaximum total parts allowed: ${MAX_TOTAL_PARTS}\nYou have selected: ${totalParts} parts\n\nPlease reduce the quantity of selected items.`;
-    alert(message);
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Check and display validation in real-time
- */
 async function checkAndDisplayValidation() {
   const selectedPartIds = Object.keys(selectedParts).filter(
     (id) => selectedParts[id] > 0,
@@ -338,7 +300,32 @@ async function checkAndDisplayValidation() {
   }
 }
 
-// Tab navigation
+function showQuantityWarning(partName, maxQty) {
+  const message = `⚠️ Quantity Limit Exceeded!\n\nMaximum allowed quantity per item: ${maxQty}\n\nYou have reached the limit.`;
+  alert(message);
+}
+
+function validateTotalParts() {
+  let totalParts = 0;
+  Object.values(selectedParts).forEach((qty) => {
+    totalParts += qty;
+  });
+
+  if (totalParts > MAX_TOTAL_PARTS) {
+    const message = `⚠️ Total Parts Limit Exceeded!\n\nMaximum total parts allowed: ${MAX_TOTAL_PARTS}\nYou have selected: ${totalParts} parts\n\nPlease reduce the quantity of selected items.`;
+    alert(message);
+    return false;
+  }
+
+  return true;
+}
+
+// Update prices when date changes
+document.getElementById("pricingDate").addEventListener("change", () => {
+  const component = currentComponent;
+  renderParts(component);
+});
+
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", (e) => {
     document
@@ -350,13 +337,6 @@ document.querySelectorAll(".tab").forEach((tab) => {
   });
 });
 
-// Date change
-document.getElementById("pricingDate").addEventListener("change", () => {
-  const component = currentComponent;
-  renderParts(component);
-});
-
-// Calculate button
 document.getElementById("calculateBtn").addEventListener("click", async () => {
   const date = document.getElementById("pricingDate").value;
 
@@ -388,6 +368,7 @@ document.getElementById("calculateBtn").addEventListener("click", async () => {
     if (response.ok) {
       displayBreakdown(result);
     } else {
+      // Show validation errors instead of generic error
       if (result.errors && result.errors.length > 0) {
         let errorMessage = "❌ INVALID COMBINATION:\n\n";
         errorMessage += result.errors.join("\n\n");
@@ -410,7 +391,6 @@ document.getElementById("calculateBtn").addEventListener("click", async () => {
   }
 });
 
-// Reset button
 document.getElementById("resetBtn").addEventListener("click", () => {
   selectedParts = {};
   lastValidation = null;
@@ -445,9 +425,6 @@ document.getElementById("resetBtn").addEventListener("click", () => {
   console.log("✓ All selections reset");
 });
 
-/**
- * Display price breakdown from calculation result
- */
 function displayBreakdown(result) {
   const container = document.getElementById("breakdownContainer");
   container.innerHTML = "";
@@ -518,5 +495,4 @@ function displayBreakdown(result) {
   }
 }
 
-// Initialize on page load
 loadParts();

@@ -8,193 +8,217 @@
 
 ---
 
-## Core UX Decisions
+## Answer to Core Questions
 
-### 1. 50-50 Split Layout
+### 1. What is the Most Important Thing on the Configurator Screen?
 
-**Left Panel (50%):**
+**The Price Breakdown — Not the Form**
 
-- Date picker
-- Component tabs
-- Part selection with prices
-- Quantity controls (+/-)
-- Calculate and Reset buttons
+A salesperson's job is to quote prices accurately. The form is just a means to that end. Therefore:
 
-**Right Panel (50%):**
+- The price breakdown should be **prominent, large, and updated in real-time**
+- Component breakdown (Frame ₹X, Wheels ₹Y, etc.) matters more than individual part details
+- Total price should be **highlighted in color** (e.g., larger font, contrasting background)
 
-- Price breakdown by component
-- Component subtotals
-- Grand total (highlighted)
-- Real-time updates
-
-**Why?** Salesperson can select parts on left while watching prices update on right.
+**Layout:** 50% left side (form), 50% right side (live breakdown)
 
 ---
 
-### 2. Tab-Based Component Navigation
+### 2. Fast & Easy for 20+ Uses Per Day
 
-**5 Tabs:**
+**Optimization 1: Pre-selected Defaults**
 
-- Frame
-- Handle Bar & Brakes
-- Seating
-- Wheels
-- Chain Assembly
+- When page loads, select the most popular/standard configuration (e.g., "Steel frame, standard handlebar, basic saddle, standard wheels, 4-gear")
+- Shows an instant quote without any clicks
+- Salesperson can modify from there
 
-**Why?** Easier than scrolling through 23 parts at once. Salesperson clicks tab → sees 2-5 options → selects.
+**Optimization 2: Component Tabs (Not Scrolling)**
+
+- Organize parts into 5 tabs (Frame, Handle Bar & Brakes, Seating, Wheels, Chain Assembly)
+- Only one tab visible at a time
+- Quick navigation between components
+
+**Optimization 3: Date Picker with Smart Defaults**
+
+- Default to "2016-12-15" (standard test date)
+- Salesperson can change to query prices on different dates
+- Prices update automatically when date changes
+
+**Optimization 4: Quantity Controls**
+
+- Easy +/− buttons for each part to increase/decrease quantity
+- Allows selecting multiple units of same part
+- Max quantity per item: 999
+- Max total parts: 10,000
 
 ---
 
-### 3. Checkboxes Instead of Radio Buttons
+### 3. Handling Invalid Combinations
 
-**Why?** Allow multiple selections of same part:
+**Problem Scenario:**
 
-- "I want 2x Steel Frame and 3x Basic Saddle"
-- Quantity controls (+/-) show how many
+- Salesperson selects "Tubeless Tyre" but no Rim is selected
+- System must warn and prevent invalid calculations
+
+**Our Approach: Real-Time Validation with Clear Feedback**
+
+**Warning Types:**
+
+1. **ERRORS (Red) - Block Calculation**
+
+   ```
+   ❌ INVALID COMBINATION: Tubeless Tyre cannot be used with Inner Tube.
+      Tubeless setup requires NO tube.
+   ```
+
+   - Prevents clicking Calculate button
+   - Shows suggestions to fix
+
+2. **WARNINGS (Yellow) - Informational Only**
+
+   ```
+   ⚠️ Tubeless Tyre selected but no Rim. Consider adding Rim for complete wheel assembly.
+   ```
+
+   - Allows calculation to proceed
+   - Informs salesperson of incomplete setup
+   - User can choose to proceed if they want
+
+**Key UX Principles:**
+
+1. **Don't block silently** — Show WHY the combo is invalid
+2. **Offer a fix** — Provide clear suggestions
+3. **Distinguish severity** — Errors (blocking) vs Warnings (informational)
+4. **Visual feedback** — Red for errors, yellow for warnings
+5. **Real-time validation** — Updates as user selects/deselects parts
+
+**Example States:**
+
+- ✓ Valid combination → Normal display, can calculate
+- ⚠️ Warning (incomplete setup) → Yellow alert, can still calculate
+- 🚫 Error (incompatible parts) → Red alert, cannot calculate
+- 💡 Suggestion provided → Clear fix offered to salesperson
+
+**Compatibility Rules Implemented:**
+
+1. **Tubeless Tyre + Inner Tube = ERROR** (mutually exclusive)
+2. **Tubeless Tyre without Rim = WARNING** (incomplete)
+3. **Standard Tyre without Rim = WARNING** (incomplete)
+4. **Standard Tyre without Tube = WARNING** (incomplete)
+5. **No wheel components selected = WARNING** (incomplete)
 
 ---
 
-### 4. Real-Time Price Display
+### 4. One Thing We Would Improve (If More Time)
 
-**Each part shows:** Name + Current Price (₹)
+**Multi-Cycle Quote Comparison**
 
-Example:
+**Current State:** Salesperson configures one cycle at a time.
+
+**Improvement:** "Create multiple quotes side-by-side"
+
+- Compare prices: Standard bike vs Premium bike
+- Show cost delta: "Premium config costs ₹2,100 more"
+- Export as PDF: Sales rep sends to customer
+
+**Why Important?** Real-world scenario — customer asks "what if I upgraded to disc brakes?" Salesperson needs to compare instant, not reconfigure.
+
+**Time Investment:** 1–2 hours (new UI layout, comparison logic)
+
+---
+
+## Screen Layout Description
+
+### Main Configurator Screen
 
 ```
-☑ Steel Frame          ₹1,850
-  [−] 1 [+]
-
-☐ Aluminium Frame      ₹2,000
-  [−] 1 [+]
+┌─────────────────────────────────────────────────────────────┐
+│ Hero Cycles — Price Configurator                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  LEFT (50%)              │  RIGHT (50%)                      │
+│  ──────────────────────  │  ──────────────────────────────  │
+│                          │                                   │
+│  [Date Picker]           │  📋 PRICE BREAKDOWN               │
+│  📅 15 Dec 2016          │  ─────────────────────────────   │
+│                          │                                   │
+│  ⚠️ [Warning Box]        │  Frame          ₹1,200            │
+│  Tubeless Tyre selected  │  Handle Bar     ₹850              │
+│  but no Rim. Consider    │  Seating        ₹400              │
+│  adding Rim...           │  Wheels         ₹1,580            │
+│                          │  Chain          ₹950              │
+│  [Tabs]                  │                                   │
+│  ┌────┬──────┬────┬──┬──┐ │  ─────────────────────────────   │
+│  │FRM │BRAKE │SEAT│WHL│CH│ │  TOTAL          ₹5,980            │
+│  └────┴──────┴────┴──┴──┘ │                                   │
+│                          │  [Calculate] [Reset]              │
+│  [Frame]                 │                                   │
+│  ☑ Steel Frame ₹1,850   │                                   │
+│    [−] 1 [+]             │                                   │
+│                          │                                   │
+│  ☐ Aluminium ₹2,000     │                                   │
+│    [−] 1 [+]             │                                   │
+│                          │                                   │
+│  [Calculate Price]       │                                   │
+│  [Reset All]             │                                   │
+│                          │                                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Why?** Salesperson sees prices instantly. No surprises at calculation.
+### Key Features Shown
+
+1. **Top-left**: Date selection (default: 2016-12-15)
+2. **Warning/Error Box**: Real-time validation messages
+3. **Tab navigation**: Quick switching between 5 components
+4. **Part selection**: Checkboxes for multiple selections
+5. **Price display**: ₹ price shown next to each part
+6. **Quantity controls**: +/− buttons for easy quantity adjustment
+7. **Right panel**: Live price breakdown with component subtotals
+8. **Action buttons**: Calculate Price and Reset All
 
 ---
 
-### 5. Validation: Two Levels
+## Implementation Features
 
-**ERRORS (Red, Blocking):**
+### Real-Time Validation
 
-```
-🚫 INVALID COMBINATION: Tubeless Tyre cannot be used with Inner Tube.
-   Tubeless setup requires NO tube.
-```
+- ✅ Errors (red) block calculation
+- ✅ Warnings (yellow) allow calculation
+- ✅ Suggestions provided for each issue
+- ✅ Updates instantly as user selects/deselects parts
 
-- Cannot click "Calculate Price"
-- Shows suggestions to fix
+### Multiple Selections
 
-**WARNINGS (Yellow, Informational):**
+- ✅ Checkboxes instead of radio buttons
+- ✅ Can select 2+ of same part
+- ✅ Quantity shown with +/− buttons
+- ✅ Max 999 per item, 10,000 total
 
-```
-⚠️ Tubeless Tyre selected but no Rim. Consider adding Rim for complete wheel assembly.
-```
+### Time-Sensitive Pricing
 
-- Can still calculate
-- Just alerts salesperson
+- ✅ All parts show prices for selected date
+- ✅ Date change updates all prices automatically
+- ✅ Historical data from 2016-2026 available
+- ✅ Prices display beside each part name
 
----
+### Price Breakdown
 
-### 6. Quantity Controls: +/- Buttons
-
-**Why not text input?**
-
-- Faster to click +/+ than type "3"
-- No accidental typos
-- Max/min enforced automatically
-- Visual feedback (button disabled when unchecked)
-
----
-
-## Component Breakdown Display
-
-### Structure:
-
-```
-Frame
-  └─ Steel Frame                1x ₹1,850 = ₹1,850
-Frame Subtotal                            ₹1,850
-
-Wheels
-  └─ Rim                        1x ₹400 = ₹400
-  └─ Tubeless Tyre             1x ₹395 = ₹395
-  └─ Spokes                     1x ₹610 = ₹610
-Wheels Subtotal                           ₹1,405
-
-──────────────────────────────────────────
-TOTAL                                     ₹4,255
-```
-
-**Why?** Shows exactly what salesperson quoted. Easy to explain to customer.
+- ✅ Grouped by component (Frame, Wheels, etc.)
+- ✅ Shows individual part prices with quantities
+- ✅ Component subtotals
+- ✅ Grand total highlighted
+- ✅ ₹ formatting with comma separators
 
 ---
 
-## Accessibility & Usability
+## Accessibility Notes
 
-✅ **Color + Icons** — Not just color for errors/warnings
-✅ **Clear Labels** — All buttons have text labels
-✅ **Logical Tab Order** — Date → Tabs → Parts → Calculate
-✅ **Keyboard Support** — Tab through controls, Enter to calculate
-✅ **Mobile Responsive** — Works on tablet/phone
-✅ **Plain Language** — No jargon in error messages
-✅ **Fast Feedback** — Real-time validation (no page reload)
-
----
-
-## Interaction Flows
-
-### Happy Path (Valid Configuration):
-
-1. Select date → 2016-12-15
-2. Click "Frame" tab → See 2 frames
-3. Check "Steel Frame" → Price appears
-4. Click "Wheels" tab → See 5 options
-5. Check "Rim", "Tubeless Tyre", "Spokes" → Prices appear
-6. Click "Chain Assembly" tab → Check "4-Gear" → Price appears
-7. Click "Calculate Price" → Breakdown shows on right
-8. Done! Salesperson can quote ₹4,255
-
-**Time:** ~20 seconds
-
-### Error Path (Invalid Combination):
-
-1. Select "Tubeless Tyre" + "Inner Tube"
-2. ⚠️ Yellow warning appears: "Tubeless Tyre selected but no Rim..."
-3. Can still calculate (just a warning)
-4. Click "Calculate Price"
-5. ❌ Red error blocks it: "INVALID COMBINATION..."
-6. Suggestion: "Remove Inner Tube"
-7. Uncheck "Inner Tube"
-8. Click "Calculate Price" again → Works
-
-**Time:** ~30 seconds (includes fixing)
-
----
-
-## Design System
-
-### Colors:
-
-- **Primary:** #667eea (Blue) — Active tabs, buttons, prices
-- **Secondary:** #764ba2 (Purple) — Gradients
-- **Success:** #4caf50 (Green) — Valid states
-- **Warning:** #ffc107 (Amber) — Warnings only
-- **Error:** #f5222d (Red) — Blocking errors
-- **Background:** #f9f9f9 (Light gray) — Content areas
-
-### Typography:
-
-- **Header:** 32px, Bold
-- **Section Titles:** 20px, Bold
-- **Labels:** 14px, Medium
-- **Body:** 13-14px, Regular
-- **Prices:** 14-18px, Bold, Blue (#667eea)
-
-### Spacing:
-
-- Padding: 10-20px (sections), 8-12px (items)
-- Gap: 8-12px between items
-- Margin: 15-20px top/bottom
+- ✓ Color is not the only indicator (use icons + text)
+- ✓ Tab order follows logical flow (date → components → summary)
+- ✓ All buttons have clear labels
+- ✓ Warning messages use plain language, not jargon
+- ✓ Error messages in red, warnings in yellow
+- ✓ Clear visual distinction between severity levels
 
 ---
 
@@ -202,9 +226,9 @@ TOTAL                                     ₹4,255
 
 When testing with actual salespeople, validate:
 
-1. ✓ Can generate quote in <30 seconds?
-2. ✓ Understand why combination is invalid?
-3. ✓ Price breakdown clear enough for customer?
-4. ✓ Easy to adjust quantities and dates?
-5. ✓ Warnings help without blocking workflow?
-6. ✓ Real-time validation helpful?
+- Can they configure a cycle in under 30 seconds? ✓
+- Do they understand why a combination is invalid? ✓
+- Is the price breakdown clear enough to quote to a customer? ✓
+- Can they easily adjust quantities and dates? ✓
+- Do warnings help without blocking their workflow? ✓
+- Is the real-time validation helpful? ✓

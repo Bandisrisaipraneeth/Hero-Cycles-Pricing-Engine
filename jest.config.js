@@ -5,4 +5,11 @@ module.exports = {
   testMatch: ["**/*.test.ts"],
   moduleFileExtensions: ["ts", "js", "json"],
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"],
+  globals: {
+    "ts-jest": {
+      tsconfig: {
+        esModuleInterop: true,
+      },
+    },
+  },
 };

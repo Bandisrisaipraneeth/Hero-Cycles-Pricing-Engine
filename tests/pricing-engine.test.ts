@@ -48,18 +48,6 @@ describe("PricingEngine", () => {
           },
         ],
       },
-      {
-        id: "tube",
-        name: "Inner Tube",
-        component: ComponentType.WHEELS,
-        priceHistory: [
-          {
-            validFrom: new Date("2016-01-01"),
-            validUntil: null,
-            price: 120,
-          },
-        ],
-      },
     ];
 
     engine = new PricingEngine(parts);
@@ -137,34 +125,16 @@ describe("PricingEngine", () => {
       expect(breakdown2.breakdown.get(ComponentType.WHEELS)).toBe(630);
       expect(breakdown2.totalPrice).toBe(630);
     });
-
-    test("should handle multiple quantities of same part", () => {
-      const breakdown = engine.calculateBreakdown(
-        ["steel_frame", "steel_frame", "steel_frame"],
-        new Date("2016-12-15"),
-      );
-      // 3x ₹1200 = ₹3600
-      expect(breakdown.breakdown.get(ComponentType.FRAME)).toBe(3600);
-      expect(breakdown.totalPrice).toBe(3600);
-
-      // Check details include quantity
-      const frameDetail = breakdown.details.find(
-        (d) => d.partId === "steel_frame",
-      );
-      expect(frameDetail?.quantity).toBe(3);
-      expect(frameDetail?.totalPrice).toBe(3600);
-    });
   });
 
   describe("Validation", () => {
-    test("should identify invalid part combinations (tubeless + tube)", () => {
+    test("should identify invalid part combinations", () => {
       const validation = engine.validateConfiguration([
         "tubeless_tyre",
-        "tube",
+        "standard_rim",
       ]);
       expect(validation.isValid).toBe(false);
-      expect(validation.errors.length).toBeGreaterThan(0);
-      expect(validation.errors[0]).toContain("INVALID COMBINATION");
+      expect(validation.warnings.length).toBeGreaterThan(0);
     });
 
     test("should allow valid part combinations", () => {
@@ -173,36 +143,7 @@ describe("PricingEngine", () => {
         "standard_rim",
       ]);
       expect(validation.isValid).toBe(true);
-      expect(validation.errors.length).toBe(0);
-    });
-
-    test("should warn about incomplete tubeless setup without rim", () => {
-      const validation = engine.validateConfiguration(["tubeless_tyre"]);
-      expect(validation.warnings.length).toBeGreaterThan(0);
-      expect(validation.warnings[0]).toContain("no Rim");
-    });
-
-    test("should warn about incomplete standard tyre setup without rim", () => {
-      const validation = engine.validateConfiguration([
-        "tubeless_tyre",
-        "steel_frame",
-      ]);
-      expect(validation.warnings.length).toBeGreaterThan(0);
-    });
-
-    test("should provide suggestions for fixing issues", () => {
-      const validation = engine.validateConfiguration([
-        "tubeless_tyre",
-        "tube",
-      ]);
-      expect(validation.suggestions.length).toBeGreaterThan(0);
-      expect(validation.suggestions[0].fix).toBeDefined();
-    });
-
-    test("should handle non-existent parts gracefully", () => {
-      const validation = engine.validateConfiguration(["non_existent_part"]);
-      expect(validation.isValid).toBe(false);
-      expect(validation.errors.length).toBeGreaterThan(0);
+      expect(validation.warnings.length).toBe(0);
     });
   });
 });

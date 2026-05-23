@@ -4,7 +4,6 @@ import {
   PriceEntry,
   PriceBreakdownResult,
   BreakdownDetail,
-  ValidationResult,
 } from "./types";
 
 export class PricingEngine {
@@ -13,7 +12,6 @@ export class PricingEngine {
   constructor(parts: Part[]) {
     this.parts = new Map();
     parts.forEach((part) => {
-      // Sort price history by date for binary search
       part.priceHistory.sort(
         (a, b) =>
           new Date(a.validFrom).getTime() - new Date(b.validFrom).getTime(),
@@ -22,10 +20,6 @@ export class PricingEngine {
     });
   }
 
-  /**
-   * Get price for a specific part on a given date
-   * Uses binary search for O(log n) lookup
-   */
   getPriceForPart(partId: string, date: Date): number {
     const part = this.parts.get(partId);
     if (!part) {
@@ -42,20 +36,15 @@ export class PricingEngine {
     return applicablePrice.price;
   }
 
-  /**
-   * Calculate complete price breakdown for multiple parts
-   * Groups prices by component type
-   */
   calculateBreakdown(partIds: string[], date: Date): PriceBreakdownResult {
     const breakdown = new Map<ComponentType, number>();
     const details: BreakdownDetail[] = [];
 
-    // Initialize all components with 0
     Object.values(ComponentType).forEach((component) => {
       breakdown.set(component as ComponentType, 0);
     });
 
-    // Count quantities of each part (same part can be selected multiple times)
+    // Group parts by ID to count quantities
     const partQuantities = new Map<string, number>();
     partIds.forEach((partId) => {
       partQuantities.set(partId, (partQuantities.get(partId) || 0) + 1);
@@ -71,11 +60,9 @@ export class PricingEngine {
       const unitPrice = this.getPriceForPart(partId, date);
       const totalPrice = unitPrice * quantity;
 
-      // Add to component total
       const currentTotal = breakdown.get(part.component) || 0;
       breakdown.set(part.component, currentTotal + totalPrice);
 
-      // Add to details for breakdown display
       details.push({
         partId,
         partName: part.name,
@@ -86,7 +73,6 @@ export class PricingEngine {
       });
     });
 
-    // Calculate grand total
     const totalPrice = Array.from(breakdown.values()).reduce(
       (sum, val) => sum + val,
       0,
@@ -100,11 +86,12 @@ export class PricingEngine {
     };
   }
 
-  /**
-   * Validate part combination for compatibility issues
-   * Returns errors (blocking) and warnings (informational)
-   */
-  validateConfiguration(partIds: string[]): ValidationResult {
+  validateConfiguration(partIds: string[]): {
+    isValid: boolean;
+    warnings: string[];
+    errors: string[];
+    suggestions: Array<{ issue: string; fix: string; autoFix?: boolean }>;
+  } {
     const warnings: string[] = [];
     const errors: string[] = [];
     const suggestions: Array<{
@@ -113,18 +100,28 @@ export class PricingEngine {
       autoFix?: boolean;
     }> = [];
 
-    // Check if all parts exist
+    // Check if parts exist
     for (const partId of partIds) {
       if (!this.parts.has(partId)) {
         errors.push(`Part not found: ${partId}`);
       }
     }
 
-    // WHEELS COMPATIBILITY RULES
+    // ONLY CHECK WHEELS COMPATIBILITY - Ignore other components
     const hasTubelessTyre = partIds.includes("tubeless_tyre");
     const hasStandardTyre = partIds.includes("standard_tyre");
     const hasRim = partIds.includes("rim");
     const hasTube = partIds.includes("tube");
+
+    // Only validate if ANY wheel component is selected
+    const wheelParts = [
+      "rim",
+      "tube",
+      "standard_tyre",
+      "tubeless_tyre",
+      "spokes",
+    ];
+    const hasAnyWheelPart = wheelParts.some((part) => partIds.includes(part));
 
     // Rule 1: Tubeless tyre must NOT have tube (BLOCKING ERROR)
     if (hasTubelessTyre && hasTube) {
@@ -138,7 +135,7 @@ export class PricingEngine {
       });
     }
 
-    // Rule 2: Tubeless tyre should have rim (WARNING ONLY)
+    // Rule 2: Tubeless tyre should have rim (WARNING ONLY - only if tubeless tyre is selected)
     if (hasTubelessTyre && !hasRim) {
       warnings.push(
         "Tubeless Tyre selected but no Rim. Consider adding Rim for complete wheel assembly.",
@@ -150,7 +147,7 @@ export class PricingEngine {
       });
     }
 
-    // Rule 3: Standard tyre should have rim (WARNING ONLY)
+    // Rule 3: Standard tyre should have rim (WARNING ONLY - only if standard tyre is selected)
     if (hasStandardTyre && !hasRim) {
       warnings.push(
         "Standard Tyre selected but no Rim. Consider adding Rim for complete wheel assembly.",
@@ -162,7 +159,7 @@ export class PricingEngine {
       });
     }
 
-    // Rule 4: Standard tyre should have tube (WARNING ONLY)
+    // Rule 4: Standard tyre should have tube (WARNING ONLY - only if standard tyre is selected)
     if (hasStandardTyre && !hasTube && !hasTubelessTyre) {
       warnings.push(
         "Standard Tyre selected but no Inner Tube. Consider adding Tube for inflation support.",
@@ -174,6 +171,23 @@ export class PricingEngine {
       });
     }
 
+    // Rule 5: No wheel components selected (WARNING ONLY - only show if some wheel part was selected)
+    if (hasAnyWheelPart) {
+      // Only warn about missing components if at least one wheel part is selected
+      if (!hasRim && (hasTubelessTyre || hasStandardTyre || hasTube)) {
+        // Already covered by rules 2 and 3
+      } else if (
+        !hasRim &&
+        !hasTubelessTyre &&
+        !hasStandardTyre &&
+        hasAnyWheelPart
+      ) {
+        warnings.push(
+          "No wheel components selected. You need at least a Rim and Tyre.",
+        );
+      }
+    }
+
     return {
       isValid: errors.length === 0,
       warnings,
@@ -182,10 +196,6 @@ export class PricingEngine {
     };
   }
 
-  /**
-   * Find applicable price for a given date using binary search
-   * Returns the most recent price entry that applies to the query date
-   */
   private findApplicablePrice(
     priceHistory: PriceEntry[],
     queryDate: Date,
@@ -195,12 +205,10 @@ export class PricingEngine {
     for (const entry of priceHistory) {
       const validFrom = new Date(entry.validFrom);
 
-      // If this entry starts after query date, stop searching
       if (validFrom > queryDate) {
         break;
       }
 
-      // If this entry has ended before query date, skip it
       if (entry.validUntil) {
         const validUntil = new Date(entry.validUntil);
         if (queryDate > validUntil) {
@@ -208,7 +216,6 @@ export class PricingEngine {
         }
       }
 
-      // This entry applies to the query date
       applicable = entry;
     }
 

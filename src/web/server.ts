@@ -9,15 +9,18 @@ const port = 3000;
 
 const engine = new PricingEngine(partsDatabase);
 
-// Middleware
+// Serve static files from views directory
+const viewsPath = path.join(__dirname, "views");
+console.log("📁 Serving from:", viewsPath);
+
+app.use(express.static(viewsPath));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "views")));
 
 /**
  * GET /api/parts
  * Returns all parts grouped by component
  */
-app.get("/api/parts", (req: Request, res: Response) => {
+app.get("/api/parts", (req: Request, res: Response): void => {
   try {
     const partsByComponent: Record<string, any[]> = {};
 
@@ -40,18 +43,18 @@ app.get("/api/parts", (req: Request, res: Response) => {
 
 /**
  * POST /api/validate
- * Validates part combination for compatibility issues
+ * Validates part combination for compatibility
  */
-app.post("/api/validate", (req: Request, res: Response) => {
+app.post("/api/validate", (req: Request, res: Response): void => {
   try {
     const { parts } = req.body;
 
     if (!Array.isArray(parts)) {
-      return res.status(400).json({ error: "Parts must be an array" });
+      res.status(400).json({ error: "Parts must be an array" });
+      return;
     }
 
     const validation = engine.validateConfiguration(parts);
-
     res.json(validation);
   } catch (error) {
     console.error("Error in POST /api/validate:", error);
@@ -62,32 +65,33 @@ app.post("/api/validate", (req: Request, res: Response) => {
 /**
  * POST /api/calculate
  * Calculates price breakdown for given parts and date
- * Blocks calculation if validation errors exist
  */
-app.post("/api/calculate", (req: Request, res: Response) => {
+app.post("/api/calculate", (req: Request, res: Response): void => {
   try {
     const { date, parts } = req.body;
 
-    // Validate input
     if (!date || !Array.isArray(parts) || parts.length === 0) {
-      return res.status(400).json({ error: "Missing date or parts" });
+      res.status(400).json({ error: "Missing date or parts" });
+      return;
     }
 
     const queryDate = new Date(date);
     if (isNaN(queryDate.getTime())) {
-      return res.status(400).json({ error: "Invalid date format" });
+      res.status(400).json({ error: "Invalid date format" });
+      return;
     }
 
-    // Validate configuration
+    // Validate configuration first
     const validation = engine.validateConfiguration(parts);
 
     // Block calculation if errors exist
     if (!validation.isValid) {
-      return res.status(400).json({
+      res.status(400).json({
         error: "Invalid configuration",
         errors: validation.errors,
         suggestions: validation.suggestions,
       });
+      return;
     }
 
     // Calculate breakdown
@@ -108,7 +112,7 @@ app.post("/api/calculate", (req: Request, res: Response) => {
 });
 
 // Serve index.html for root path
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (req: Request, res: Response): void => {
   res.sendFile(path.join(__dirname, "views", "index.html"));
 });
 

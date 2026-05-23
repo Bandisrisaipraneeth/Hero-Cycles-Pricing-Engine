@@ -395,7 +395,7 @@ export const partsDatabase: Part[] = [
     ],
   },
 
-  // WHEELS - Rim, Tube, Standard Tyre, Tubeless Tyre, Spokes
+  // WHEELS - Include Rim, Tube, Standard Tyre, Tubeless Tyre, and Spokes
   {
     id: "rim",
     name: "Rim",

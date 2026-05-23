@@ -38,7 +38,7 @@
 
 **Edge Case 3: Invalid Component Combinations**
 
-- A tubeless tyre requires NO inner tube, but not all rims are compatible
+- A tubeless tyre requires a tubeless-compatible rim, but not all rims are compatible
 - Salesperson selects incompatible parts unknowingly
 - System should warn or prevent the combination
 
@@ -80,14 +80,14 @@ PriceEntry {
 
 ```
 Cycle Price Breakdown — 15 Dec 2016
-────────────────────────────────────
-Frame              ₹1,200
-Handle Bar/Brakes  ₹850
-Seating            ₹400
-Wheels             ₹1,405
-Chain Assembly     ₹950
-────────────────────────────────────
-TOTAL              ₹4,405
+------------------------------------
+Frame : ₹1,200
+Handle Bar/Brakes : ₹850
+Seating : ₹400
+Wheels : ₹1,580
+Chain Assembly : ₹950
+------------------------------------
+TOTAL : ₹4,980
 ```
 
 - Group prices by high-level component (not individual parts)
@@ -96,7 +96,7 @@ TOTAL              ₹4,405
 
 ---
 
-## Part 2: Data Model Design
+## Part 2a: Data Model Design
 
 ### Core Entities
 
@@ -223,6 +223,8 @@ Part { priceHistory: [ {validFrom, validUntil, price}, ... ] }
 - ✓ Easy to query with binary search
 - ✓ Audit trail is obvious
 
+**Why?** For a fresh engineer building a small system, this is the clearest approach. Easy to test, understand, and extend. If we move to a database later, the logic stays the same.
+
 ---
 
 ### Time-Sensitive Pricing Algorithm
@@ -247,36 +249,10 @@ getPriceForPart(partId, queryDate):
 
 ---
 
-## Part 3: Validation Strategy
+## Next Steps (Covered in Code)
 
-### Compatibility Rules
-
-**ERRORS (Block Calculation):**
-
-1. Tubeless Tyre + Inner Tube = INVALID (mutually exclusive)
-
-**WARNINGS (Allow, Inform Only):**
-
-1. Tubeless Tyre without Rim = Incomplete
-2. Standard Tyre without Rim = Incomplete
-3. Standard Tyre without Tube = Incomplete
-4. No wheel components = Incomplete
-
-### Implementation
-
-- Real-time validation as user selects parts
-- Show errors in red (blocking)
-- Show warnings in yellow (informational)
-- Provide suggestions for each issue
-
----
-
-## Conclusion
-
-This design prioritizes:
-
-1. **Correctness** — Handle historical pricing accurately
-2. **Usability** — Simple for non-technical salespeople
-3. **Performance** — O(log n) price lookups via binary search
-4. **Clarity** — Component-based breakdown for customer explanations
-5. **Robustness** — Validation prevents invalid configurations
+1. Implement `PricingDatabase` with parts and price history
+2. Build `PricingCalculator` with the algorithm above
+3. Create CLI interface to accept config file + date
+4. Build web UI for salesperson convenience
+5. Write tests for edge cases
